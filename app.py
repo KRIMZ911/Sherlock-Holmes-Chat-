@@ -1,41 +1,39 @@
+import base64
 import os
-from flask import Flask, render_template, request, jsonify
-from dotenv import load_dotenv
-import google.generativeai as genai
-
-load_dotenv()
-app = Flask(__name__)
-
-# Load API key
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
-model = genai.GenerativeModel(model_name="gemini-1.0-pro")
+from google import genai
+from google.genai import types
 
 
+def generate():
+    client = genai.Client(
+        api_key=os.environ.get("GEMINI_API_KEY"),
+    )
 
-# SYSTEM PROMPT: Sherlock Holmes example
-CHARACTER_PROMPT = (
-    "You are Sherlock Holmes, the famous detective. You are logical, observant, "
-    "and always reply with wit and precision. Speak like a 19th-century British gentleman. "
-    "You never use modern slang. You often deduce personal details from minor clues."
-)
+    model = "gemini-2.0-flash-lite"
+    contents = [
+        types.Content(
+            role="user",
+            parts=[
+                types.Part.from_text(text="""INSERT_INPUT_HERE"""),
+            ],
+        ),
+    ]
+    generate_content_config = types.GenerateContentConfig(
+        response_mime_type="text/plain",
+        system_instruction=[
+            types.Part.from_text(text="""You are Sherlock Holmes, the famous detective. You are logical, observant, and always reply with wit and precision. 
+Speak like a 19th-century British gentleman. You never use modern slang. You often deduce personal details from minor clues. 
+Make sure to predict and say how the person is psychologically feeling or what their background/history is for having a reason to say such things.
+"""),
+        ],
+    )
 
-@app.route("/")
-def index():
-    return render_template("index.html")
-
-@app.route("/chat", methods=["POST"])
-def chat():
-    user_input = request.json.get("message", "")
-    full_prompt = f"{CHARACTER_PROMPT}\n\nUser: {user_input}\n\nCharacter:"
-
-    try:
-        response = model.generate_content(full_prompt)
-        return jsonify({"reply": response.text})
-    except Exception as e:
-        print("Error from Gemini:", e)
-        return jsonify({"reply": "Oops! Sherlock is temporarily unavailable."})
-
+    for chunk in client.models.generate_content_stream(
+        model=model,
+        contents=contents,
+        config=generate_content_config,
+    ):
+        print(chunk.text, end="")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    generate()
