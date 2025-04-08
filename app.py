@@ -9,9 +9,8 @@ app = Flask(__name__)
 # Load API key
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-model = genai.GenerativeModel(
-    model_name="models/gemini-pro"  # Fully-qualified model name
-)
+model = genai.GenerativeModel(model_name="gemini-1.0-pro")
+
 
 
 # SYSTEM PROMPT: Sherlock Holmes example
