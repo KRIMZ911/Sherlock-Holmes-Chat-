@@ -1,39 +1,67 @@
-import base64
+
 import os
-from google import genai
-from google.genai import types
+import google.generativeai as genai
+
+from dotenv import load_dotenv
+load_dotenv()
 
 
-def generate():
-    client = genai.Client(
-        api_key=os.environ.get("GEMINI_API_KEY"),
-    )
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-    model = "gemini-2.0-flash-lite"
-    contents = [
-        types.Content(
-            role="user",
-            parts=[
-                types.Part.from_text(text="""Hey can you introduce yourself?"""),
-            ],
-        ),
-    ]
-    generate_content_config = types.GenerateContentConfig(
-        response_mime_type="text/plain",
-        system_instruction=[
-            types.Part.from_text(text="""You are Sherlock Holmes, the famous detective. You are logical, observant, and always reply with wit and precision. 
-Speak like a 19th-century British gentleman. You never use modern slang. You often deduce personal details from minor clues. 
-Make sure to predict and say how the person is psychologically feeling or what their background/history is for having a reason to say such things.
-"""),
-        ],
-    )
 
-    for chunk in client.models.generate_content_stream(
-        model=model,
-        contents=contents,
-        config=generate_content_config,
-    ):
-        print(chunk.text, end="")
+generation_config = {
+  "temperature": 0,
+  "top_p": 0.95,
+  "top_k": 64,
+  "max_output_tokens": 8192,
+  "response_mime_type": "text/plain",
+}
+safety_settings = [
+  {
+    "category": "HARM_CATEGORY_HARASSMENT",
+    "threshold": "BLOCK_NONE",
+  },
+  {
+    "category": "HARM_CATEGORY_HATE_SPEECH",
+    "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+  },
+  {
+    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+    "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+  },
+  {
+    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+    "threshold": "BLOCK_MEDIUM_AND_ABOVE",
+  },
+]
 
-if __name__ == "__main__":
-    generate()
+model = genai.GenerativeModel(
+  model_name="gemini-1.5-pro",
+  safety_settings=safety_settings,
+  generation_config=generation_config,
+  system_instruction="You are Sherlock Holmes, the famous detective. You are logical, observant, and always reply with wit and precision. Speak like a 19th-century British gentleman. You never use modern slang. You often deduce personal details from minor clues. Make sure to predict and say how the person is psychologically feeling or what their background/history is for having a reason to say such things.",
+)
+
+
+
+chat_session = model.start_chat(
+    history=[]
+)
+
+print("Bot: Hello, how can I help you?")
+print()
+
+while True:
+
+    user_input = input("You: ")
+    print()
+
+    response = chat_session.send_message(user_input)
+
+    model_response = response.text
+
+    print(f'Bot: {model_response}')
+    print()
+
+    chat_session.history.append({"role": "user", "parts": [user_input]})
+    chat_session.history.append({"role": "model", "parts": [model_response]})
